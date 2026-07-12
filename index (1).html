@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Log — chore quest</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+
+  :root{
+    --bg:#F4F1FF;
+    --card:#FFFFFF;
+    --ink:#241E38;
+    --muted:#7A7290;
+    --line:#E4DEF7;
+    --violet:#7C5CFC;
+    --violet-deep:#5F3FE0;
+    --tangerine:#FF9F1C;
+    --tangerine-deep:#E0870A;
+    --coral:#FF6B6B;
+    --yellow:#FFC93C;
+    --teal:#2EC4B6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 0%, #E9E2FF 0%, transparent 45%),
+      radial-gradient(circle at 100% 10%, #FFEBD6 0%, transparent 40%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 18px 80px;}
+
+  header{padding:32px 16px 0;text-align:center;}
+  h1{
+    font-family:'Baloo 2',sans-serif;
+    font-weight:800;
+    font-size:clamp(30px,6vw,44px);
+    margin:0;
+    letter-spacing:-0.01em;
+    background:linear-gradient(90deg, var(--violet), var(--coral));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .sub{color:var(--muted);font-size:14px;margin:2px 0 18px;font-weight:500;}
+
+  .who-bar{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);
+    margin-bottom:20px;
+  }
+  .who-bar b{color:var(--ink);font-weight:700;}
+  .switch-link{
+    background:none;border:none;color:var(--violet);font-family:inherit;font-size:12px;
+    text-decoration:underline;cursor:pointer;padding:0;
+  }
+
+  .away-banner{
+    background:linear-gradient(90deg, var(--yellow), var(--tangerine));
+    color:var(--ink);border-radius:14px;padding:14px 18px;margin-bottom:20px;
+    font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    flex-wrap:wrap;
+  }
+  .away-banner button{
+    border:none;background:var(--ink);color:#fff;border-radius:8px;padding:8px 12px;
+    font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;cursor:pointer;
+  }
+
+  .tabs{display:flex;gap:4px;margin:0 0 16px;background:#fff;border-radius:12px;padding:4px;
+    border:1px solid var(--line);}
+  .tab{
+    flex:1;text-align:center;padding:10px 4px;font-family:'Baloo 2',sans-serif;
+    font-weight:700;font-size:13px;color:var(--muted);cursor:pointer;border-radius:9px;
+  }
+  .tab.active{color:#fff;background:linear-gradient(135deg, var(--violet), var(--violet-deep));}
+
+  .toolbar{display:flex;gap:8px;margin-bottom:18px;}
+  .toolbar-btn{
+    flex:1;border:1.5px dashed var(--violet);background:#F8F5FF;color:var(--violet);
+    border-radius:12px;padding:11px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:13px;
+    cursor:pointer;
+  }
+  .toolbar-btn.solid{border-style:solid;background:linear-gradient(135deg,var(--teal),#1FA093);color:#fff;border-color:transparent;}
+
+  .section-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;letter-spacing:0.1em;text-transform:uppercase;
+    color:var(--muted);margin:26px 2px 12px;font-weight:600;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .section-label:first-child{margin-top:0;}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;}
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    border:1px solid var(--line);
+    padding:16px 18px;
+    display:flex;align-items:center;gap:14px;
+    position:relative;
+    box-shadow:0 2px 0 rgba(124,92,252,0.05);
+  }
+  .card.due{box-shadow:0 0 0 2px var(--yellow) inset;}
+  .card.overdue{box-shadow:0 0 0 2px var(--coral) inset;}
+  .card.escalated{box-shadow:0 0 0 2.5px var(--coral) inset; background:#FFF3F0;}
+  .card.chain{background:#FBFAFF;}
+  .card.paused{opacity:.55;}
+  .card.personal{background:#FBFFF9;}
+  .card.highlight{animation:pulse 1.6s ease 2;}
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 2px var(--teal) inset;}
+    50%{box-shadow:0 0 0 4px var(--teal) inset;}
+  }
+  .stripe{width:5px;align-self:stretch;border-radius:4px;flex-shrink:0;}
+  .stripe.a{background:var(--violet);}
+  .stripe.b{background:var(--tangerine);}
+  .stripe.p{background:var(--teal);}
+  .stripe.skip{background:#C9C2D9;}
+  .stripe.both{background:linear-gradient(180deg, var(--violet) 50%, var(--tangerine) 50%);}
+
+  .card-body{flex:1;min-width:0;}
+  .task-name{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;margin:0 0 3px;}
+  .pts{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--violet);background:#F1EDFF;
+    padding:2px 6px;border-radius:6px;margin-left:6px;}
+  .task-meta{font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .task-meta .by{font-weight:700;color:var(--ink);}
+  .task-meta .due-mono{font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+  .escalate-note{font-size:12px;color:var(--coral);font-weight:700;margin-top:2px;}
+
+  .btn-col{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex-shrink:0;}
+  .done-btn{
+    border:none;border-radius:10px;
+    background:linear-gradient(135deg, var(--violet), var(--violet-deep));color:#fff;
+    font-family:'Baloo 2',sans-serif;font-weight:700;font-size:13.5px;
+    padding:11px 16px;cursor:pointer;white-space:nowrap;
+    transition:transform .1s ease, box-shadow .15s ease;
+    box-shadow:0 3px 0 var(--violet-deep);
+  }
+  .done-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--violet-deep);}
+  .done-btn.teal{background:linear-gradient(135deg, var(--teal), #1FA093);box-shadow:0 3px 0 #1FA093;}
+  .done-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+  .mini-btn{
+    border:none;background:#F1EDFF;color:var(--violet);border-radius:8px;padding:6px;font-size:11px;
+    cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;
+  }
+  .mini-btn.del{background:#FFE9E5;color:var(--coral);}
+
+  .empty-chain{font-size:13px;color:var(--muted);font-style:italic;padding:6px 2px 2px;}
+
+  .history-item{
+    display:flex;align-items:center;gap:10px;padding:11px 4px;
+    border-bottom:1px solid var(--line);font-size:13.5px;
+  }
+  .history-item:last-child{border-bottom:none;}
+  .history-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .history-dot.a{background:var(--violet);}
+  .history-dot.b{background:var(--tangerine);}
+  .history-dot.skip{background:#C9C2D9;}
+  .history-dot.both{background:linear-gradient(180deg, var(--violet) 50%, var(--tangerine) 50%);}
+  .history-text{flex:1;min-width:0;}
+  .history-text b{font-weight:700;}
+  .history-time{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10.5px;white-space:nowrap;}
+  .history-actions{display:flex;gap:4px;flex-shrink:0;}
+  .icon-btn{
+    border:none;background:#F1EDFF;color:var(--violet);border-radius:6px;width:26px;height:26px;
+    font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn.del{background:#FFE9E5;color:var(--coral);}
+  .empty-state{color:var(--muted);font-size:13px;font-style:italic;padding:20px 4px;text-align:center;}
+
+  .level-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;}
+  .level-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .level-name{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;}
+  .level-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+  .bar-track{height:12px;background:#F1EDFF;border-radius:8px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:8px;transition:width .3s ease;}
+  .bar-fill.a{background:linear-gradient(90deg, var(--violet), #A88CFF);}
+  .bar-fill.b{background:linear-gradient(90deg, var(--tangerine), #FFC978);}
+
+  .streak-row{display:flex;gap:12px;margin:16px 0;}
+  .streak-card{flex:1;background:linear-gradient(135deg,#FFF3D6,#FFE7B8);border-radius:14px;padding:16px;text-align:center;}
+  .streak-num{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:30px;color:var(--tangerine-deep);}
+  .streak-label{font-size:11px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+
+  .badge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .badge{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;}
+  .badge.earned{border-color:var(--violet);background:#F8F5FF;}
+  .badge-emoji{font-size:26px;margin-bottom:4px;filter:grayscale(1);opacity:.4;}
+  .badge.earned .badge-emoji{filter:none;opacity:1;}
+  .badge-name{font-size:10.5px;font-weight:700;color:var(--ink);}
+
+  .field{margin-bottom:12px;text-align:left;}
+  .field label{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .field input, .field select{
+    display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--line);border-radius:9px;
+    font:inherit;font-size:14px;background:#fff;
+  }
+  .field-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:14px;text-align:left;}
+  .radio-row{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  .radio-opt{
+    display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;
+    cursor:pointer;font-size:13.5px;font-weight:600;
+  }
+
+  footer{
+    margin-top:44px;padding-top:18px;border-top:1px dashed var(--line);
+    font-size:12px;color:var(--muted);text-align:center;line-height:1.6;
+  }
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:10px;
+    font-size:13px;font-weight:600;opacity:0;transition:opacity .25s ease, transform .25s ease;
+    pointer-events:none;z-index:60;max-width:85vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .loading{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(36,30,56,.6);
+    display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;overflow-y:auto;
+  }
+  .modal{background:var(--card);border-radius:18px;padding:26px 24px;max-width:360px;width:100%;text-align:center;}
+  .modal h2{font-family:'Baloo 2',sans-serif;font-size:20px;margin:0 0 6px;}
+  .modal p{font-size:13px;color:var(--muted);margin:0 0 18px;}
+  .modal-btn{
+    display:block;width:100%;padding:13px;margin-bottom:10px;border-radius:10px;border:2px solid var(--line);
+    background:#fff;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15px;cursor:pointer;
+  }
+  .modal-btn.a{border-color:var(--violet);color:var(--violet);}
+  .modal-btn.b{border-color:var(--tangerine);color:var(--tangerine-deep);}
+  .modal-btn.primary{background:linear-gradient(135deg,var(--violet),var(--violet-deep));color:#fff;border-color:transparent;}
+  .modal-btn.ghost{background:none;color:var(--muted);border-color:transparent;margin-bottom:0;}
+  .modal-btn:active{transform:scale(0.98);}
+
+  .confetti-piece{position:fixed;top:0;width:8px;height:8px;pointer-events:none;z-index:200;border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>The Log</h1>
+    <div class="sub">who did what — and how you're both doing</div>
+    <div class="who-bar">This phone is <b id="whoLabel">—</b> <button class="switch-link" onclick="openDeviceModal(true)">switch</button></div>
+  </header>
+
+  <div id="awayBannerRoot"></div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="tasks" onclick="setTab('tasks')">Tasks</div>
+    <div class="tab" data-tab="history" onclick="setTab('history')">History</div>
+    <div class="tab" data-tab="rewards" onclick="setTab('rewards')">Rewards</div>
+    <div class="tab" data-tab="settings" onclick="setTab('settings')">Settings</div>
+  </div>
+
+  <div id="app" class="loading">Loading the log…</div>
+
+  <footer>
+    NFC tags: point each tag at <span style="font-family:'IBM Plex Mono',monospace">?open=taskId</span> on this page's link. Tapping it on your phone logs it as you.<br/>
+    Shared tasks sync instantly between you both. Personal tasks stay on this device only.
+  </footer>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="deviceModalRoot"></div>
+<div id="addTaskModalRoot"></div>
+<div id="backdateModalRoot"></div>
+
+<script>
+const STATE_KEY = 'chore-log-state-v3';
+const DEVICE_KEY = 'chore-log-device-owner';
+const PERSONAL_KEY = 'chore-log-personal-v1';
+const DAY = 86400000, HOUR = 3600000;
+const MAX_HISTORY = 400;
+
+const BUILTIN_TASKS = [
+  { id:'wash',      name:'Put a wash on',            group:'Laundry chain', intervalDays:3.5, kind:'root', chainTo:'hang', chainDelayMs:90*60*1000, points:10 },
+  { id:'hang',      name:'Hang up the drying',        group:'Laundry chain', kind:'chained', chainTo:'fold', chainDelayMs:12*HOUR, points:5 },
+  { id:'fold',      name:'Fold & put away',           group:'Laundry chain', kind:'chained', chainTo:null, points:5 },
+  { id:'sheets',    name:'Wash & change bedsheets',   group:'Every 2 weeks', intervalDays:14, kind:'root', points:20 },
+  { id:'towels',    name:'Wash & change towels',      group:'Every 2 weeks', intervalDays:14, kind:'root', points:15 },
+  { id:'groceries', name:'Order groceries',           group:'Weekly', intervalDays:7, kind:'root', points:10 },
+  { id:'toiletries',name:'Check toiletries stock',    group:'Monthly', intervalDays:30, kind:'root', points:10 },
+  { id:'cook',      name:'Cook',                      group:'Daily', intervalDays:1, kind:'root', points:10 },
+  { id:'washup',    name:'Washing up',                group:'Daily', intervalDays:1, kind:'root', points:10 },
+  { id:'tidy',      name:'Floor pickup & general tidy', group:'Every 3 days', intervalDays:3, kind:'root', points:10 },
+];
+
+const BADGES = [
+  { id:'first',   emoji:'🌱', name:'First Tap',    check: s => s.history.length >= 1 },
+  { id:'roll',    emoji:'🔥', name:'On a Roll',     check: s => currentStreak(s) >= 3 },
+  { id:'week',    emoji:'🏆', name:'Week Warrior',  check: s => currentStreak(s) >= 7 },
+  { id:'century', emoji:'💯', name:'Century Club',  check: s => totalPoints(s,'A')+totalPoints(s,'B') >= 100 },
+  { id:'fifty',   emoji:'⭐', name:'50 Logs',       check: s => s.history.length >= 50 },
+  { id:'teamwork',emoji:'🤝', name:'Even Split',    check: s => { const a=totalPoints(s,'A'),b=totalPoints(s,'B'); return (a+b)>=60 && Math.abs(a-b) <= (a+b)*0.2; } },
+];
+
+let state = null;
+let personal = null;
+let deviceOwner = null;
+let currentTab = 'tasks';
+
+function allTasks(){ return BUILTIN_TASKS.concat(state.customTasks||[]); }
+function findTaskCfg(id){ return allTasks().find(t=>t.id===id); }
+
+function defaultState(){
+  return {
+    names:{A:'Person A', B:'Person B'},
+    history: [],
+    customTasks: [],
+    chain: {
+      hang: { pendingAt:null, createdAt:null, pendingBy:null, active:false, stage:'none' },
+      fold: { pendingAt:null, createdAt:null, pendingBy:null, active:false, stage:'none' },
+    },
+    away: { active:false, scope:null, since:null },
+    pauses: []
+  };
+}
+function defaultPersonal(){ return { tasks: [], history: [] }; }
+
+let fbApp, fbDb, fbRefFn, fbGet, fbSet, fbOnValue;
+async function initFirebase(){
+  const appMod = await import('https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js');
+  const dbMod = await import('https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js');
+  const firebaseConfig = {
+    apiKey: "AIzaSyD8chEcdhyrTGQswdxYBzzxI6U-masPakw",
+    authDomain: "actually-do-helpful-deeds.firebaseapp.com",
+    databaseURL: "https://actually-do-helpful-deeds-default-rtdb.firebaseio.com",
+    projectId: "actually-do-helpful-deeds",
+    storageBucket: "actually-do-helpful-deeds.firebasestorage.app",
+    messagingSenderId: "603087220226",
+    appId: "1:603087220226:web:58c8e3549b7cd91bf5011b"
+  };
+  fbApp = appMod.initializeApp(firebaseConfig);
+  fbDb = dbMod.getDatabase(fbApp);
+  fbRefFn = dbMod.ref;
+  fbGet = dbMod.get;
+  fbSet = dbMod.set;
+  fbOnValue = dbMod.onValue;
+}
+
+async function loadState(){
+  try{
+    const snap = await fbGet(fbRefFn(fbDb, 'sharedState'));
+    if(snap.exists()) return migrate(snap.val());
+  }catch(e){ console.error(e); }
+  const s = defaultState();
+  await saveState(s);
+  return s;
+}
+function migrate(s){
+  const d = defaultState();
+  return Object.assign(d, s, {
+    names: Object.assign(d.names, s.names||{}),
+    chain: Object.assign(d.chain, s.chain||{}),
+    away: Object.assign(d.away, s.away||{}),
+    pauses: s.pauses || [],
+    history: s.history || [],
+    customTasks: s.customTasks || []
+  });
+}
+async function saveState(s){
+  try{ await fbSet(fbRefFn(fbDb, 'sharedState'), s); }
+  catch(e){ console.error(e); showToast('Could not save — check connection'); }
+}
+async function loadPersonal(){
+  try{
+    const raw = localStorage.getItem(PERSONAL_KEY);
+    if(raw) return Object.assign(defaultPersonal(), JSON.parse(raw));
+  }catch(e){}
+  return defaultPersonal();
+}
+async function savePersonal(p){
+  try{ localStorage.setItem(PERSONAL_KEY, JSON.stringify(p)); }
+  catch(e){ console.error(e); showToast('Could not save your personal task'); }
+}
+async function loadDeviceOwner(){
+  try{ return localStorage.getItem(DEVICE_KEY); }catch(e){ return null; }
+}
+async function saveDeviceOwner(v){
+  deviceOwner = v;
+  try{ localStorage.setItem(DEVICE_KEY, v); }catch(e){}
+}
+
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+function fireConfetti(){
+  const colors = ['#7C5CFC','#FF9F1C','#FF6B6B','#FFC93C','#2EC4B6'];
+  for(let i=0;i<26;i++){
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = (45 + Math.random()*10) + 'vw';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(p);
+    const dx = (Math.random()-0.5)*300;
+    const rot = Math.random()*720-360;
+    const dur = 900 + Math.random()*500;
+    p.animate([
+      { transform:`translate(0,0) rotate(0deg)`, opacity:1 },
+      { transform:`translate(${dx}px, ${window.innerHeight*0.7}px) rotate(${rot}deg)`, opacity:0 }
+    ], { duration: dur, easing:'cubic-bezier(.2,.6,.4,1)' });
+    setTimeout(()=>p.remove(), dur+50);
+  }
+}
+
+/* ---- calendar export (real native notifications via the phone's calendar app) ---- */
+function icsStamp(ts){
+  const dt = new Date(ts);
+  const pad = n => String(n).padStart(2,'0');
+  return `${dt.getUTCFullYear()}${pad(dt.getUTCMonth()+1)}${pad(dt.getUTCDate())}T${pad(dt.getUTCHours())}${pad(dt.getUTCMinutes())}00Z`;
+}
+function icsEscape(s){
+  return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+function icsEventBlock(title, ts){
+  const safeTitle = icsEscape(title);
+  const uid = ts + '-' + Math.random().toString(36).slice(2,8) + '@the-log';
+  return [
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${icsStamp(Date.now())}`,
+    `DTSTART:${icsStamp(ts)}`,
+    'DURATION:PT15M',
+    `SUMMARY:${safeTitle}`,
+    'BEGIN:VALARM',
+    'TRIGGER:-PT0M',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:${safeTitle}`,
+    'END:VALARM',
+    'END:VEVENT'
+  ].join('\r\n');
+}
+function downloadICSFile(filename, events){
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//The Log//Chore Reminder//EN']
+    .concat(events).concat(['END:VCALENDAR']).join('\r\n');
+  const blob = new Blob([ics], { type:'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+}
+function downloadICS(title, dueTs){
+  downloadICSFile(title.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'.ics', [icsEventBlock(title, dueTs)]);
+  showToast('Reminder downloaded — open it to add a real alarm to your calendar');
+}
+function reminderForRoot(taskId){
+  const cfg = findTaskCfg(taskId);
+  const last = lastCompletion(taskId);
+  const baseTime = last ? last.at : (Date.now() - cfg.intervalDays*DAY);
+  const dueAt = applyPauses(baseTime, baseTime + cfg.intervalDays*DAY);
+  downloadICS(cfg.name, dueAt);
+}
+function reminderForChain(taskId){
+  const rec = state.chain[taskId];
+  const cfg = findTaskCfg(taskId);
+  const adjusted = applyPauses(rec.createdAt, rec.pendingAt);
+  downloadICS(cfg.name, adjusted);
+}
+function reminderForPersonal(taskId){
+  const t = personal.tasks.find(x=>x.id===taskId);
+  if(!t) return;
+  const last = personalLastCompletion(taskId);
+  const baseTime = last ? last.at : (Date.now() - t.intervalDays*DAY);
+  const dueAt = baseTime + t.intervalDays*DAY;
+  downloadICS(t.name + ' (personal)', dueAt);
+}
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function downloadAllICS(){
+  const events = [];
+  allTasks().forEach(cfg=>{
+    if(cfg.kind!=='root' || cfg.oneOff) return;
+    const last = lastCompletion(cfg.id);
+    const baseTime = last ? last.at : (Date.now() - cfg.intervalDays*DAY);
+    const dueAt = applyPauses(baseTime, baseTime + cfg.intervalDays*DAY);
+    events.push(icsEventBlock(cfg.name, dueAt));
+  });
+  ['hang','fold'].forEach(id=>{
+    const rec = state.chain[id];
+    if(rec.active){
+      const cfg = findTaskCfg(id);
+      const adjusted = applyPauses(rec.createdAt, rec.pendingAt);
+      events.push(icsEventBlock(cfg.name, adjusted));
+    }
+  });
+  personal.tasks.forEach(t=>{
+    if(t.oneOff) return;
+    const last = personalLastCompletion(t.id);
+    const baseTime = last ? last.at : (Date.now() - t.intervalDays*DAY);
+    const dueAt = baseTime + t.intervalDays*DAY;
+    events.push(icsEventBlock(t.name + ' (personal)', dueAt));
+  });
+  if(events.length===0){ showToast('Nothing to sync yet'); return; }
+  downloadICSFile('the-log-all-reminders.ics', events);
+  showToast(`${events.length} reminders downloaded — open the file to add them all`);
+}
+
+/* ---- pause-aware time math ---- */
+function applyPauses(baseTime, targetTime){
+  let adjusted = targetTime;
+  (state.pauses||[]).forEach(p=>{
+    const pStart = p.start, pEnd = p.end || Date.now();
+    if(pStart >= baseTime) adjusted += (pEnd - pStart);
+    else if(pEnd > baseTime) adjusted += (pEnd - baseTime);
+  });
+  return adjusted;
+}
+
+function fmtDue(ms){
+  const diff = ms - Date.now();
+  const days = diff/DAY;
+  if(diff<=0){ const od=Math.floor(-days); return od<=0 ? 'due today' : `overdue ${od}d`; }
+  if(days<1) return `due in ${Math.round(diff/HOUR)}h`;
+  return `due in ${Math.round(days)}d`;
+}
+function fmtDate(ts){ if(!ts) return 'never'; return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
+function fmtTime(ts){
+  const d=new Date(ts), now=new Date();
+  const sameDay = d.toDateString()===now.toDateString();
+  const time = d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  return sameDay ? `today, ${time}` : `${d.toLocaleDateString(undefined,{month:'short',day:'numeric'})}, ${time}`;
+}
+
+function lastCompletion(taskId){ return state.history.find(h=>h.taskId===taskId) || null; }
+function personalLastCompletion(taskId){ return personal.history.find(h=>h.taskId===taskId) || null; }
+
+function totalPoints(s, person){
+  const map = {}; BUILTIN_TASKS.concat(s.customTasks||[]).forEach(t=>map[t.id]=t.points||0);
+  let sum = 0;
+  s.history.forEach(h=>{
+    const pts = (typeof h.pts === 'number' && h.pts > 0) ? h.pts : (map[h.taskId]||0);
+    if(h.by===person) sum += pts;
+    else if(h.by==='both') sum += pts/2;
+  });
+  return sum;
+}
+function currentStreak(s){
+  const days = new Set(s.history.filter(h=>!h.skip).map(h=> new Date(h.at).toDateString()));
+  let streak = 0;
+  let cursor = new Date();
+  if(!days.has(cursor.toDateString())) cursor.setDate(cursor.getDate()-1);
+  while(days.has(cursor.toDateString())){ streak++; cursor.setDate(cursor.getDate()-1); }
+  return streak;
+}
+
+/* ---- device / onboarding ---- */
+function openDeviceModal(isSwitch){
+  const root = document.getElementById('deviceModalRoot');
+  const nA = state ? state.names.A : 'Person A';
+  const nB = state ? state.names.B : 'Person B';
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>${isSwitch ? 'Switch phone owner' : 'Whose phone is this?'}</h2>
+        <p>So taps and NFC scans on this phone get logged under the right name. You can switch anytime in Settings.</p>
+        <button class="modal-btn a" onclick="pickDevice('A')">${escHtml(nA)}</button>
+        <button class="modal-btn b" onclick="pickDevice('B')">${escHtml(nB)}</button>
+      </div>
+    </div>`;
+}
+async function pickDevice(key){
+  await saveDeviceOwner(key);
+  document.getElementById('deviceModalRoot').innerHTML = '';
+  render();
+}
+
+/* ---- logging: shared tasks ---- */
+function addHistory(taskId, by, skip, at, pts){
+  const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), taskId, by: skip ? null : by, at: at || Date.now(), skip: !!skip, pts: pts||0 };
+  state.history.unshift(entry);
+  state.history.sort((a,b)=> b.at - a.at);
+  if(state.history.length > MAX_HISTORY) state.history.length = MAX_HISTORY;
+  return entry;
+}
+async function logSkip(taskId){
+  const cfg = findTaskCfg(taskId);
+  addHistory(taskId, null, true);
+  await saveState(state);
+  showToast(`Skipped — "${cfg.name}" not needed this time`);
+  render();
+}
+async function logRoot(taskId){
+  if(state.away.active){ showToast("Holiday mode is on — turn it off in Settings first"); return; }
+  if(!deviceOwner){ openDeviceModal(false); return; }
+  const cfg = findTaskCfg(taskId);
+  addHistory(taskId, deviceOwner, false, null, cfg.points);
+  if(cfg.chainTo){
+    const next = state.chain[cfg.chainTo];
+    const delay = cfg.chainDelayMs||0;
+    next.createdAt = Date.now(); next.pendingAt = Date.now()+delay; next.pendingBy = deviceOwner; next.active = true; next.stage='first';
+  }
+  if(cfg.oneOff && cfg.custom){ state.customTasks = state.customTasks.filter(t=>t.id!==taskId); }
+  await saveState(state);
+  fireConfetti();
+  showToast(`+${cfg.points} pts — ${state.names[deviceOwner]} did "${cfg.name}"`);
+  render();
+}
+async function logTogether(taskId){
+  if(state.away.active){ showToast("Holiday mode is on — turn it off in Settings first"); return; }
+  const cfg = findTaskCfg(taskId);
+  addHistory(taskId, 'both', false, null, cfg.points);
+  if(cfg.chainTo){
+    const next = state.chain[cfg.chainTo];
+    const delay = cfg.chainDelayMs||0;
+    next.createdAt = Date.now(); next.pendingAt = Date.now()+delay; next.pendingBy = suggestNext(cfg.chainTo) || 'A'; next.active = true; next.stage='first';
+  }
+  if(cfg.oneOff && cfg.custom){ state.customTasks = state.customTasks.filter(t=>t.id!==taskId); }
+  await saveState(state);
+  fireConfetti();
+  showToast(`+${cfg.points} pts each — you both did "${cfg.name}"`);
+  render();
+}
+function suggestNext(taskId){
+  const entries = state.history.filter(h=>h.taskId===taskId && !h.skip);
+  if(entries.length===0) return null;
+  const last = entries[0];
+  if(last.by==='A' || last.by==='B') return last.by==='A' ? 'B' : 'A';
+  const countA = entries.filter(e=>e.by==='A').length;
+  const countB = entries.filter(e=>e.by==='B').length;
+  return countA <= countB ? 'A' : 'B';
+}
+async function logChained(taskId){
+  if(state.away.active){ showToast("Holiday mode is on — turn it off in Settings first"); return; }
+  if(!deviceOwner){ openDeviceModal(false); return; }
+  const cfg = findTaskCfg(taskId);
+  const rec = state.chain[taskId];
+  const by = deviceOwner;
+  rec.active = false; rec.pendingAt = null; rec.stage='none';
+  addHistory(taskId, by, false, null, cfg.points);
+  if(cfg.chainTo){
+    const next = state.chain[cfg.chainTo];
+    const delay = cfg.chainDelayMs||0;
+    next.createdAt = Date.now(); next.pendingAt = Date.now()+delay; next.pendingBy = by; next.active = true; next.stage='first';
+  }
+  await saveState(state);
+  fireConfetti();
+  showToast(`+${cfg.points} pts — ${state.names[by]} did "${cfg.name}"`);
+  render();
+}
+function checkEscalations(){
+  const foldRec = state.chain.fold;
+  if(foldRec.active && foldRec.stage==='first'){
+    const adjustedFirst = applyPauses(foldRec.createdAt, foldRec.pendingAt);
+    if(Date.now() > adjustedFirst + 5*HOUR) foldRec.stage = 'escalated';
+  }
+}
+
+/* ---- logging: personal tasks ---- */
+async function markPersonalDone(taskId){
+  const t = personal.tasks.find(x=>x.id===taskId);
+  if(!t) return;
+  personal.history.unshift({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), taskId, at: Date.now() });
+  if(t.oneOff){ personal.tasks = personal.tasks.filter(x=>x.id!==taskId); }
+  await savePersonal(personal);
+  fireConfetti();
+  showToast(`Logged — "${t.name}"`);
+  render();
+}
+async function deletePersonalTask(id){
+  personal.tasks = personal.tasks.filter(t=>t.id!==id);
+  personal.history = personal.history.filter(h=>h.taskId!==id);
+  await savePersonal(personal);
+  showToast('Removed');
+  render();
+}
+
+/* ---- edit / delete shared history ---- */
+async function deleteEntry(id){
+  state.history = state.history.filter(h=>h.id!==id);
+  await saveState(state);
+  showToast('Entry deleted');
+  render();
+}
+async function swapEntry(id){
+  const e = state.history.find(h=>h.id===id);
+  if(!e) return;
+  e.by = e.by==='A' ? 'B' : 'A';
+  await saveState(state);
+  showToast('Entry updated');
+  render();
+}
+
+/* ---- backdate / set starting date ---- */
+function openBackdateModal(taskId, isPersonal){
+  const cfg = isPersonal ? personal.tasks.find(t=>t.id===taskId) : findTaskCfg(taskId);
+  if(!cfg) return;
+  const today = new Date().toISOString().slice(0,10);
+  const root = document.getElementById('backdateModalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Set starting date</h2>
+        <p>For "${escHtml(cfg.name)}" — tells the app when this was last actually done, so due dates and reminders line up correctly.</p>
+        <div class="field">
+          <label>Date</label>
+          <input id="backdateInput" type="date" value="${today}" max="${today}"/>
+        </div>
+        <div class="radio-row" style="margin-bottom:16px;">
+          <label class="radio-opt" style="cursor:pointer;">
+            <input type="radio" name="backdateMode" value="last" checked/> This is when it was last done
+          </label>
+          <label class="radio-opt" style="cursor:pointer;">
+            <input type="radio" name="backdateMode" value="next"/> This is when it's next due
+          </label>
+        </div>
+        <button class="modal-btn primary" onclick="submitBackdate('${taskId}', ${isPersonal})">Save</button>
+        <button class="modal-btn ghost" onclick="closeBackdateModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+function closeBackdateModal(){ document.getElementById('backdateModalRoot').innerHTML = ''; }
+
+async function submitBackdate(taskId, isPersonal){
+  const dateStr = document.getElementById('backdateInput').value;
+  if(!dateStr){ showToast('Pick a date first'); return; }
+  const mode = document.querySelector('input[name="backdateMode"]:checked').value;
+  let ts = new Date(dateStr + 'T12:00:00').getTime();
+
+  if(isPersonal){
+    const t = personal.tasks.find(x=>x.id===taskId);
+    if(!t) return;
+    if(mode==='next') ts = ts - t.intervalDays*DAY;
+    personal.history.unshift({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), taskId, at: ts });
+    personal.history.sort((a,b)=>b.at-a.at);
+    await savePersonal(personal);
+  } else {
+    const cfg = findTaskCfg(taskId);
+    if(!cfg) return;
+    if(mode==='next') ts = ts - cfg.intervalDays*DAY;
+    if(!deviceOwner){ closeBackdateModal(); openDeviceModal(false); return; }
+    addHistory(taskId, deviceOwner, false, ts, cfg.points);
+    await saveState(state);
+  }
+  closeBackdateModal();
+  showToast('Starting date set');
+  render();
+}
+
+/* ---- custom / add-task ---- */
+function openAddTaskModal(){
+  const root = document.getElementById('addTaskModalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Add a task</h2>
+        <p>Shared tasks appear on both your boards. Private tasks stay only on your account.</p>
+        <div class="field">
+          <label>Task name</label>
+          <input id="newTaskName" placeholder="e.g. Water the plants" maxlength="40"/>
+        </div>
+        <div class="field">
+          <label>How often</label>
+          <select id="newTaskFreq">
+            <option value="once">Just once — no repeat</option>
+            <option value="1">Daily</option>
+            <option value="3">Every 3 days</option>
+            <option value="7" selected>Weekly</option>
+            <option value="14">Every 2 weeks</option>
+            <option value="30">Monthly</option>
+            <option value="custom">Custom (days)</option>
+          </select>
+        </div>
+        <div class="field" id="customDaysField" style="display:none;">
+          <label>Every how many days?</label>
+          <input id="newTaskCustomDays" type="number" min="1" value="7"/>
+        </div>
+        <div class="field">
+          <label>Points value</label>
+          <input id="newTaskPoints" type="number" min="1" value="10"/>
+        </div>
+        <label class="field-check">
+          <input type="checkbox" id="newTaskPrivate"/> Just for me — private, not shared
+        </label>
+        <button class="modal-btn primary" onclick="submitNewTask()">Add task</button>
+        <button class="modal-btn ghost" onclick="closeAddTaskModal()">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('newTaskFreq').addEventListener('change', e=>{
+    document.getElementById('customDaysField').style.display = e.target.value==='custom' ? 'block' : 'none';
+  });
+}
+function closeAddTaskModal(){ document.getElementById('addTaskModalRoot').innerHTML = ''; }
+
+async function submitNewTask(){
+  const name = document.getElementById('newTaskName').value.trim();
+  if(!name){ showToast('Give it a name first'); return; }
+  const freqSel = document.getElementById('newTaskFreq').value;
+  const isOneOff = freqSel === 'once';
+  const days = isOneOff ? null : (freqSel==='custom' ? Math.max(1, parseInt(document.getElementById('newTaskCustomDays').value)||7) : parseInt(freqSel));
+  const points = Math.max(1, parseInt(document.getElementById('newTaskPoints').value)||10);
+  const isPrivate = document.getElementById('newTaskPrivate').checked;
+  const id = 'custom-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+
+  if(isPrivate){
+    personal.tasks.push({ id, name, intervalDays: days, points, oneOff: isOneOff });
+    await savePersonal(personal);
+    showToast(isOneOff ? 'One-off private task added' : 'Private task added — only you can see it');
+  } else {
+    if(!deviceOwner){ closeAddTaskModal(); openDeviceModal(false); return; }
+    state.customTasks.push({ id, name, group: isOneOff ? 'One-off tasks' : 'Your tasks', intervalDays: days, kind:'root', points, custom:true, oneOff: isOneOff });
+    await saveState(state);
+    showToast(isOneOff ? 'One-off task added for both of you' : 'Shared task added for both of you');
+  }
+  closeAddTaskModal();
+  setTab('tasks');
+}
+async function deleteCustomTask(id){
+  state.customTasks = state.customTasks.filter(t=>t.id!==id);
+  state.history = state.history.filter(h=>h.taskId!==id);
+  await saveState(state);
+  showToast('Task removed');
+  render();
+}
+
+/* ---- away mode ---- */
+async function setAway(scope){
+  state.away = { active:true, scope, since: Date.now() };
+  state.pauses.push({ start: Date.now(), end: null });
+  await saveState(state);
+  showToast('Holiday mode on — everything paused');
+  render();
+}
+async function endAway(){
+  const openPause = state.pauses.find(p=>p.end===null);
+  if(openPause) openPause.end = Date.now();
+  state.away = { active:false, scope:null, since:null };
+  await saveState(state);
+  showToast('Welcome back! Due dates picked up where you left off');
+  render();
+}
+
+/* ---- rendering ---- */
+function renderAwayBanner(){
+  const root = document.getElementById('awayBannerRoot');
+  if(!state.away.active){ root.innerHTML=''; return; }
+  const who = state.away.scope==='both' ? 'Both of you are' : `${escHtml(state.names[state.away.scope])} is`;
+  root.innerHTML = `<div class="away-banner">
+    <span>🌴 ${who} away since ${fmtDate(state.away.since)} — everything's on hold.</span>
+    <button onclick="endAway()">End holiday</button>
+  </div>`;
+}
+
+function taskCardHTML(cfg){
+  const paused = state.away.active;
+  if(cfg.kind==='chained'){
+    const rec = state.chain[cfg.id];
+    if(!rec.active){
+      return `<div class="card chain ${paused?'paused':''}" data-task="${cfg.id}" style="opacity:.55">
+        <div class="card-body">
+          <p class="task-name">${escHtml(cfg.name)} <span class="pts">+${cfg.points}</span></p>
+          <div class="empty-chain">waiting on an earlier step</div>
+        </div>
+      </div>`;
+    }
+    const adjustedDue = applyPauses(rec.createdAt, rec.pendingAt);
+    const overdue = !paused && adjustedDue <= Date.now();
+    const stripe = (rec.pendingBy||'A').toLowerCase();
+    const escalated = cfg.id==='fold' && rec.stage==='escalated';
+    return `<div class="card chain ${paused?'paused':(escalated?'escalated':(overdue?'overdue':'due'))}" data-task="${cfg.id}">
+      <div class="stripe ${stripe}"></div>
+      <div class="card-body">
+        <p class="task-name">${escHtml(cfg.name)} <span class="pts">+${cfg.points}</span></p>
+        <div class="task-meta">
+          <span class="by">suggested: ${escHtml(state.names[rec.pendingBy])}</span>
+          <span class="due-mono">${paused ? 'paused' : fmtDue(adjustedDue)}</span>
+        </div>
+        ${escalated ? `<div class="escalate-note">Still not dry? Second reminder — anyone can log it.</div>` : ''}
+      </div>
+      <div class="btn-col">
+        <button class="done-btn teal" ${paused?'disabled':''} onclick="logChained('${cfg.id}')">Log it</button>
+        <button class="mini-btn" onclick="reminderForChain('${cfg.id}')">📅 Remind</button>
+      </div>
+    </div>`;
+  }
+
+  if(cfg.oneOff){
+    const doneEntry = lastCompletion(cfg.id);
+    if(doneEntry) return ''; // completed one-off tasks vanish from the board
+    return `<div class="card ${paused?'paused':''}" data-task="${cfg.id}">
+      <div class="card-body">
+        <p class="task-name">${escHtml(cfg.name)} <span class="pts">+${cfg.points}</span></p>
+        <div class="task-meta"><span>One-off — not done yet</span></div>
+      </div>
+      <div class="btn-col">
+        <button class="done-btn" ${paused?'disabled':''} onclick="logRoot('${cfg.id}')">I did this</button>
+        <button class="mini-btn" ${paused?'disabled':''} onclick="logTogether('${cfg.id}')">🤝 Together</button>
+        ${cfg.custom ? `<button class="mini-btn del" onclick="deleteCustomTask('${cfg.id}')">🗑 Remove</button>` : ''}
+      </div>
+    </div>`;
+  }
+
+  const last = lastCompletion(cfg.id);
+  const baseTime = last ? last.at : (Date.now() - cfg.intervalDays*DAY);
+  const rawDue = baseTime + cfg.intervalDays*DAY;
+  const dueAt = applyPauses(baseTime, rawDue);
+  const isOverdue = !paused && dueAt <= Date.now();
+  const isDueSoon = !paused && !isOverdue && (dueAt - Date.now()) < DAY;
+  const stripe = last ? (last.skip ? 'skip' : (last.by==='both' ? 'both' : last.by.toLowerCase())) : '';
+  const lastByName = last ? (last.skip ? 'skipped' : (last.by==='both' ? 'both of you' : state.names[last.by])) : 'nobody yet';
+  const suggestion = suggestNext(cfg.id);
+  return `<div class="card ${paused?'paused':(isOverdue?'overdue':(isDueSoon?'due':''))}" data-task="${cfg.id}">
+    ${stripe ? `<div class="stripe ${stripe}"></div>` : ''}
+    <div class="card-body">
+      <p class="task-name">${escHtml(cfg.name)} <span class="pts">+${cfg.points}</span></p>
+      <div class="task-meta">
+        <span>last: <span class="by">${escHtml(lastByName)}</span></span>
+        <span class="due-mono">${paused ? 'paused' : fmtDue(dueAt)}</span>
+        <span>· ${fmtDate(last?last.at:null)}</span>
+        ${suggestion ? `<span style="color:var(--violet);font-weight:600;">→ ${escHtml(state.names[suggestion])}'s turn</span>` : ''}
+      </div>
+    </div>
+    <div class="btn-col">
+      <button class="done-btn" ${paused?'disabled':''} onclick="logRoot('${cfg.id}')">I did this</button>
+      <button class="mini-btn" ${paused?'disabled':''} onclick="logTogether('${cfg.id}')">🤝 Together</button>
+      <button class="mini-btn" ${paused?'disabled':''} onclick="logSkip('${cfg.id}')">⏭ Skip</button>
+      <button class="mini-btn" onclick="reminderForRoot('${cfg.id}')">📅 Remind</button>
+      <button class="mini-btn" onclick="openBackdateModal('${cfg.id}', false)">📆 Set date</button>
+      ${cfg.custom ? `<button class="mini-btn del" onclick="deleteCustomTask('${cfg.id}')">🗑 Remove</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function personalCardHTML(t){
+  if(t.oneOff){
+    const doneEntry = personalLastCompletion(t.id);
+    if(doneEntry) return '';
+    return `<div class="card personal">
+      <div class="stripe p"></div>
+      <div class="card-body">
+        <p class="task-name">${escHtml(t.name)} <span class="pts">+${t.points}</span></p>
+        <div class="task-meta"><span>One-off — not done yet</span></div>
+      </div>
+      <div class="btn-col">
+        <button class="done-btn teal" onclick="markPersonalDone('${t.id}')">Done</button>
+        <button class="mini-btn del" onclick="deletePersonalTask('${t.id}')">🗑 Remove</button>
+      </div>
+    </div>`;
+  }
+  const last = personalLastCompletion(t.id);
+  const baseTime = last ? last.at : (Date.now() - t.intervalDays*DAY);
+  const dueAt = baseTime + t.intervalDays*DAY;
+  const isOverdue = dueAt <= Date.now();
+  const isDueSoon = !isOverdue && (dueAt-Date.now()) < DAY;
+  return `<div class="card personal ${isOverdue?'overdue':(isDueSoon?'due':'')}">
+    <div class="stripe p"></div>
+    <div class="card-body">
+      <p class="task-name">${escHtml(t.name)} <span class="pts">+${t.points}</span></p>
+      <div class="task-meta">
+        <span>last: ${fmtDate(last?last.at:null)}</span>
+        <span class="due-mono">${fmtDue(dueAt)}</span>
+      </div>
+    </div>
+    <div class="btn-col">
+      <button class="done-btn teal" onclick="markPersonalDone('${t.id}')">Done</button>
+      <button class="mini-btn" onclick="reminderForPersonal('${t.id}')">📅 Remind</button>
+      <button class="mini-btn" onclick="openBackdateModal('${t.id}', true)">📆 Set date</button>
+      <button class="mini-btn del" onclick="deletePersonalTask('${t.id}')">🗑 Remove</button>
+    </div>
+  </div>`;
+}
+
+function renderTasks(){
+  const groups = [];
+  allTasks().filter(t => !(t.oneOff && lastCompletion(t.id))).forEach(t=>{
+    let g = groups.find(g=>g.name===t.group);
+    if(!g){ g={name:t.group, tasks:[]}; groups.push(g); }
+    g.tasks.push(t);
+  });
+  let html = `<div class="toolbar">
+    <button class="toolbar-btn" onclick="openAddTaskModal()">+ Add a task</button>
+    <button class="toolbar-btn solid" onclick="downloadAllICS()">📅 Sync all to calendar</button>
+  </div>`;
+  groups.forEach(g=>{
+    html += `<div class="section-label">${g.name}</div><div class="grid">`;
+    g.tasks.forEach(t=> html += taskCardHTML(t));
+    html += `</div>`;
+  });
+  html += `<div class="section-label">Just for you</div><div class="grid">`;
+  if(personal.tasks.length===0){
+    html += `<div class="empty-state">No private tasks yet — add one above and tick "just for me."</div>`;
+  } else {
+    personal.tasks.forEach(t=> html += personalCardHTML(t));
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderHistory(){
+  let html = `<div class="section-label">Recent activity</div>`;
+  if(state.history.length===0){
+    html += `<div class="empty-state">Nothing logged yet — tap "I did this" on a task, or scan an NFC tag.</div>`;
+  } else {
+    html += `<div class="card" style="display:block;padding:4px 14px;">`;
+    state.history.slice(0,80).forEach(h=>{
+      const cfg = findTaskCfg(h.taskId);
+      const label = h.skip ? `<span style="color:var(--muted);">Skipped</span>` : (h.by==='both' ? `<b>Both of you</b>` : `<b>${escHtml(state.names[h.by])}</b>`);
+      html += `<div class="history-item">
+        <div class="history-dot ${h.skip ? 'skip' : h.by.toLowerCase()}"></div>
+        <div class="history-text">${label} — ${cfg ? escHtml(cfg.name) : escHtml(h.taskId)}</div>
+        <div class="history-time">${fmtTime(h.at)}</div>
+        <div class="history-actions">
+          ${h.skip ? '' : `<button class="icon-btn" title="Switch person" onclick="swapEntry('${h.id}')">⇄</button>`}
+          <button class="icon-btn del" title="Delete" onclick="deleteEntry('${h.id}')">✕</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  return html;
+}
+
+function renderRewards(){
+  checkEscalations();
+  const ptsA = totalPoints(state,'A'), ptsB = totalPoints(state,'B');
+  const lvlA = Math.floor(ptsA/100)+1, lvlB = Math.floor(ptsB/100)+1;
+  const streak = currentStreak(state);
+  let html = `
+    <div class="level-card">
+      <div class="level-head"><span class="level-name">${escHtml(state.names.A)}</span><span class="level-tag">Lv.${lvlA} · ${ptsA} pts</span></div>
+      <div class="bar-track"><div class="bar-fill a" style="width:${ptsA%100}%"></div></div>
+    </div>
+    <div class="level-card">
+      <div class="level-head"><span class="level-name">${escHtml(state.names.B)}</span><span class="level-tag">Lv.${lvlB} · ${ptsB} pts</span></div>
+      <div class="bar-track"><div class="bar-fill b" style="width:${ptsB%100}%"></div></div>
+    </div>
+    <div class="streak-row">
+      <div class="streak-card"><div class="streak-num">🔥 ${streak}</div><div class="streak-label">Day streak</div></div>
+      <div class="streak-card"><div class="streak-num">${state.history.length}</div><div class="streak-label">Total logs</div></div>
+    </div>
+    <div class="section-label">Badges</div>
+    <div class="badge-grid">`;
+  BADGES.forEach(b=>{
+    const earned = b.check(state);
+    html += `<div class="badge ${earned?'earned':''}"><div class="badge-emoji">${b.emoji}</div><div class="badge-name">${b.name}</div></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderSettings(){
+  return `
+    <div class="section-label">Names</div>
+    <div class="card" style="flex-direction:column;align-items:stretch;gap:12px;">
+      <div class="field"><label>Person A</label><input id="nameAInput" value="${escHtml(state.names.A)}" maxlength="16"/></div>
+      <div class="field"><label>Person B</label><input id="nameBInput" value="${escHtml(state.names.B)}" maxlength="16"/></div>
+      <button class="done-btn" style="margin-top:2px;" onclick="saveNames()">Save names</button>
+    </div>
+
+    <div class="section-label">Holiday mode</div>
+    <div class="card" style="flex-direction:column;align-items:stretch;gap:10px;">
+      ${state.away.active ? `
+        <p style="font-size:13.5px;margin:0;">Currently on hold — ${state.away.scope==='both'?'both of you':escHtml(state.names[state.away.scope])} away since ${fmtDate(state.away.since)}.</p>
+        <button class="done-btn teal" onclick="endAway()">End holiday</button>
+      ` : `
+        <p style="font-size:13.5px;color:var(--muted);margin:0 0 4px;">Pause all reminders and due-dates while you're away.</p>
+        <div class="radio-row">
+          <div class="radio-opt" onclick="setAway('A')">${escHtml(state.names.A)} is away</div>
+          <div class="radio-opt" onclick="setAway('B')">${escHtml(state.names.B)} is away</div>
+          <div class="radio-opt" onclick="setAway('both')">Both of us are away</div>
+        </div>
+      `}
+    </div>
+
+    <div class="section-label">Calendar sync</div>
+    <div class="card">
+      <div class="card-body"><p class="task-name" style="font-size:14px;">Download every upcoming reminder at once</p></div>
+      <button class="done-btn teal" onclick="downloadAllICS()">📅 Sync all</button>
+    </div>
+
+    <div class="section-label">This device</div>
+    <div class="card">
+      <div class="card-body"><p class="task-name" style="font-size:14px;">Currently logging as: ${deviceOwner ? escHtml(state.names[deviceOwner]) : 'not set'}</p></div>
+      <button class="done-btn" onclick="openDeviceModal(true)">Change</button>
+    </div>
+  `;
+}
+
+async function saveNames(){
+  const a = document.getElementById('nameAInput').value.trim();
+  const b = document.getElementById('nameBInput').value.trim();
+  state.names.A = a || 'Person A';
+  state.names.B = b || 'Person B';
+  await saveState(state);
+  showToast('Names updated');
+  render();
+}
+
+function setTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(el=> el.classList.toggle('active', el.dataset.tab===tab));
+  render();
+}
+
+function render(){
+  renderAwayBanner();
+  const app = document.getElementById('app');
+  app.className = '';
+  if(currentTab==='tasks'){ checkEscalations(); app.innerHTML = renderTasks(); }
+  else if(currentTab==='history') app.innerHTML = renderHistory();
+  else if(currentTab==='rewards') app.innerHTML = renderRewards();
+  else app.innerHTML = renderSettings();
+
+  document.getElementById('whoLabel').textContent = deviceOwner ? state.names[deviceOwner] : '—';
+
+  if(currentTab==='tasks'){
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get('open');
+    if(openId){
+      const el = document.querySelector(`[data-task="${openId}"]`);
+      if(el){ el.classList.add('highlight'); setTimeout(()=>el.scrollIntoView({behavior:'smooth', block:'center'}), 150); }
+    }
+  }
+}
+
+async function init(){
+  document.getElementById('app').textContent = 'Connecting…';
+  await initFirebase();
+  state = await loadState();
+  personal = await loadPersonal();
+  deviceOwner = await loadDeviceOwner();
+  render();
+  if(!deviceOwner) openDeviceModal(false);
+
+  // Real-time sync: both phones update instantly, no polling delay
+  fbOnValue(fbRefFn(fbDb, 'sharedState'), (snapshot) => {
+    if(snapshot.exists()){
+      state = migrate(snapshot.val());
+      render();
+    }
+  });
+}
+init();
+</script>
+</body>
+</html>
