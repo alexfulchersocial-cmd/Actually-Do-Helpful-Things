@@ -119,6 +119,7 @@
   .stripe.b{background:var(--tangerine);}
   .stripe.p{background:var(--teal);}
   .stripe.skip{background:#C9C2D9;}
+  .stripe.both{background:linear-gradient(180deg, var(--violet) 50%, var(--tangerine) 50%);}
 
   .card-body{flex:1;min-width:0;}
   .task-name{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;margin:0 0 3px;}
@@ -158,6 +159,7 @@
   .history-dot.a{background:var(--violet);}
   .history-dot.b{background:var(--tangerine);}
   .history-dot.skip{background:#C9C2D9;}
+  .history-dot.both{background:linear-gradient(180deg, var(--violet) 50%, var(--tangerine) 50%);}
   .history-text{flex:1;min-width:0;}
   .history-text b{font-weight:700;}
   .history-time{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10.5px;white-space:nowrap;}
@@ -259,7 +261,8 @@
 
   <footer>
     NFC tags: point each tag at <span style="font-family:'IBM Plex Mono',monospace">?open=taskId</span> on this page's link. Tapping it on your phone logs it as you.<br/>
-    Shared tasks sync instantly between you both. Personal tasks stay on this device only.
+    Shared tasks sync instantly between you both. Personal tasks stay on this device only.<br/>
+    <span style="opacity:.5;">build v2</span>
   </footer>
 </div>
 
@@ -480,7 +483,7 @@ function escHtml(s){
 function downloadAllICS(){
   const events = [];
   allTasks().forEach(cfg=>{
-    if(cfg.kind!=='root') return;
+    if(cfg.kind!=='root' || cfg.oneOff) return;
     const last = lastCompletion(cfg.id);
     const baseTime = last ? last.at : (Date.now() - cfg.intervalDays*DAY);
     const dueAt = applyPauses(baseTime, baseTime + cfg.intervalDays*DAY);
@@ -495,6 +498,7 @@ function downloadAllICS(){
     }
   });
   personal.tasks.forEach(t=>{
+    if(t.oneOff) return;
     const last = personalLastCompletion(t.id);
     const baseTime = last ? last.at : (Date.now() - t.intervalDays*DAY);
     const dueAt = baseTime + t.intervalDays*DAY;
@@ -536,7 +540,13 @@ function personalLastCompletion(taskId){ return personal.history.find(h=>h.taskI
 
 function totalPoints(s, person){
   const map = {}; BUILTIN_TASKS.concat(s.customTasks||[]).forEach(t=>map[t.id]=t.points||0);
-  return s.history.filter(h=>h.by===person).reduce((sum,h)=> sum + (map[h.taskId]||0), 0);
+  let sum = 0;
+  s.history.forEach(h=>{
+    const pts = (typeof h.pts === 'number' && h.pts > 0) ? h.pts : (map[h.taskId]||0);
+    if(h.by===person) sum += pts;
+    else if(h.by==='both') sum += pts/2;
+  });
+  return sum;
 }
 function currentStreak(s){
   const days = new Set(s.history.filter(h=>!h.skip).map(h=> new Date(h.at).toDateString()));
@@ -569,8 +579,8 @@ async function pickDevice(key){
 }
 
 /* ---- logging: shared tasks ---- */
-function addHistory(taskId, by, skip, at){
-  const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), taskId, by: skip ? null : by, at: at || Date.now(), skip: !!skip };
+function addHistory(taskId, by, skip, at, pts){
+  const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), taskId, by: skip ? null : by, at: at || Date.now(), skip: !!skip, pts: pts||0 };
   state.history.unshift(entry);
   state.history.sort((a,b)=> b.at - a.at);
   if(state.history.length > MAX_HISTORY) state.history.length = MAX_HISTORY;
@@ -587,16 +597,41 @@ async function logRoot(taskId){
   if(state.away.active){ showToast("Holiday mode is on — turn it off in Settings first"); return; }
   if(!deviceOwner){ openDeviceModal(false); return; }
   const cfg = findTaskCfg(taskId);
-  addHistory(taskId, deviceOwner);
+  addHistory(taskId, deviceOwner, false, null, cfg.points);
   if(cfg.chainTo){
     const next = state.chain[cfg.chainTo];
     const delay = cfg.chainDelayMs||0;
     next.createdAt = Date.now(); next.pendingAt = Date.now()+delay; next.pendingBy = deviceOwner; next.active = true; next.stage='first';
   }
+  if(cfg.oneOff && cfg.custom){ state.customTasks = state.customTasks.filter(t=>t.id!==taskId); }
   await saveState(state);
   fireConfetti();
   showToast(`+${cfg.points} pts — ${state.names[deviceOwner]} did "${cfg.name}"`);
   render();
+}
+async function logTogether(taskId){
+  if(state.away.active){ showToast("Holiday mode is on — turn it off in Settings first"); return; }
+  const cfg = findTaskCfg(taskId);
+  addHistory(taskId, 'both', false, null, cfg.points);
+  if(cfg.chainTo){
+    const next = state.chain[cfg.chainTo];
+    const delay = cfg.chainDelayMs||0;
+    next.createdAt = Date.now(); next.pendingAt = Date.now()+delay; next.pendingBy = suggestNext(cfg.chainTo) || 'A'; next.active = true; next.stage='first';
+  }
+  if(cfg.oneOff && cfg.custom){ state.customTasks = state.customTasks.filter(t=>t.id!==taskId); }
+  await saveState(state);
+  fireConfetti();
+  showToast(`+${cfg.points} pts each — you both did "${cfg.name}"`);
+  render();
+}
+function suggestNext(taskId){
+  const entries = state.history.filter(h=>h.taskId===taskId && !h.skip);
+  if(entries.length===0) return null;
+  const last = entries[0];
+  if(last.by==='A' || last.by==='B') return last.by==='A' ? 'B' : 'A';
+  const countA = entries.filter(e=>e.by==='A').length;
+  const countB = entries.filter(e=>e.by==='B').length;
+  return countA <= countB ? 'A' : 'B';
 }
 async function logChained(taskId){
   if(state.away.active){ showToast("Holiday mode is on — turn it off in Settings first"); return; }
@@ -605,7 +640,7 @@ async function logChained(taskId){
   const rec = state.chain[taskId];
   const by = deviceOwner;
   rec.active = false; rec.pendingAt = null; rec.stage='none';
-  addHistory(taskId, by);
+  addHistory(taskId, by, false, null, cfg.points);
   if(cfg.chainTo){
     const next = state.chain[cfg.chainTo];
     const delay = cfg.chainDelayMs||0;
@@ -629,6 +664,7 @@ async function markPersonalDone(taskId){
   const t = personal.tasks.find(x=>x.id===taskId);
   if(!t) return;
   personal.history.unshift({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), taskId, at: Date.now() });
+  if(t.oneOff){ personal.tasks = personal.tasks.filter(x=>x.id!==taskId); }
   await savePersonal(personal);
   fireConfetti();
   showToast(`Logged — "${t.name}"`);
@@ -706,7 +742,7 @@ async function submitBackdate(taskId, isPersonal){
     if(!cfg) return;
     if(mode==='next') ts = ts - cfg.intervalDays*DAY;
     if(!deviceOwner){ closeBackdateModal(); openDeviceModal(false); return; }
-    addHistory(taskId, deviceOwner, false, ts);
+    addHistory(taskId, deviceOwner, false, ts, cfg.points);
     await saveState(state);
   }
   closeBackdateModal();
@@ -729,6 +765,7 @@ function openAddTaskModal(){
         <div class="field">
           <label>How often</label>
           <select id="newTaskFreq">
+            <option value="once">Just once — no repeat</option>
             <option value="1">Daily</option>
             <option value="3">Every 3 days</option>
             <option value="7" selected>Weekly</option>
@@ -762,20 +799,21 @@ async function submitNewTask(){
   const name = document.getElementById('newTaskName').value.trim();
   if(!name){ showToast('Give it a name first'); return; }
   const freqSel = document.getElementById('newTaskFreq').value;
-  const days = freqSel==='custom' ? Math.max(1, parseInt(document.getElementById('newTaskCustomDays').value)||7) : parseInt(freqSel);
+  const isOneOff = freqSel === 'once';
+  const days = isOneOff ? null : (freqSel==='custom' ? Math.max(1, parseInt(document.getElementById('newTaskCustomDays').value)||7) : parseInt(freqSel));
   const points = Math.max(1, parseInt(document.getElementById('newTaskPoints').value)||10);
   const isPrivate = document.getElementById('newTaskPrivate').checked;
   const id = 'custom-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
 
   if(isPrivate){
-    personal.tasks.push({ id, name, intervalDays: days, points });
+    personal.tasks.push({ id, name, intervalDays: days, points, oneOff: isOneOff });
     await savePersonal(personal);
-    showToast('Private task added — only you can see it');
+    showToast(isOneOff ? 'One-off private task added' : 'Private task added — only you can see it');
   } else {
     if(!deviceOwner){ closeAddTaskModal(); openDeviceModal(false); return; }
-    state.customTasks.push({ id, name, group:'Your tasks', intervalDays: days, kind:'root', points, custom:true });
+    state.customTasks.push({ id, name, group: isOneOff ? 'One-off tasks' : 'Your tasks', intervalDays: days, kind:'root', points, custom:true, oneOff: isOneOff });
     await saveState(state);
-    showToast('Shared task added for both of you');
+    showToast(isOneOff ? 'One-off task added for both of you' : 'Shared task added for both of you');
   }
   closeAddTaskModal();
   setTab('tasks');
@@ -849,14 +887,31 @@ function taskCardHTML(cfg){
     </div>`;
   }
 
+  if(cfg.oneOff){
+    const doneEntry = lastCompletion(cfg.id);
+    if(doneEntry) return ''; // completed one-off tasks vanish from the board
+    return `<div class="card ${paused?'paused':''}" data-task="${cfg.id}">
+      <div class="card-body">
+        <p class="task-name">${escHtml(cfg.name)} <span class="pts">+${cfg.points}</span></p>
+        <div class="task-meta"><span>One-off — not done yet</span></div>
+      </div>
+      <div class="btn-col">
+        <button class="done-btn" ${paused?'disabled':''} onclick="logRoot('${cfg.id}')">I did this</button>
+        <button class="mini-btn" ${paused?'disabled':''} onclick="logTogether('${cfg.id}')">🤝 Together</button>
+        ${cfg.custom ? `<button class="mini-btn del" onclick="deleteCustomTask('${cfg.id}')">🗑 Remove</button>` : ''}
+      </div>
+    </div>`;
+  }
+
   const last = lastCompletion(cfg.id);
   const baseTime = last ? last.at : (Date.now() - cfg.intervalDays*DAY);
   const rawDue = baseTime + cfg.intervalDays*DAY;
   const dueAt = applyPauses(baseTime, rawDue);
   const isOverdue = !paused && dueAt <= Date.now();
   const isDueSoon = !paused && !isOverdue && (dueAt - Date.now()) < DAY;
-  const stripe = last ? (last.skip ? 'skip' : last.by.toLowerCase()) : '';
-  const lastByName = last ? (last.skip ? 'skipped' : state.names[last.by]) : 'nobody yet';
+  const stripe = last ? (last.skip ? 'skip' : (last.by==='both' ? 'both' : last.by.toLowerCase())) : '';
+  const lastByName = last ? (last.skip ? 'skipped' : (last.by==='both' ? 'both of you' : state.names[last.by])) : 'nobody yet';
+  const suggestion = suggestNext(cfg.id);
   return `<div class="card ${paused?'paused':(isOverdue?'overdue':(isDueSoon?'due':''))}" data-task="${cfg.id}">
     ${stripe ? `<div class="stripe ${stripe}"></div>` : ''}
     <div class="card-body">
@@ -865,10 +920,12 @@ function taskCardHTML(cfg){
         <span>last: <span class="by">${escHtml(lastByName)}</span></span>
         <span class="due-mono">${paused ? 'paused' : fmtDue(dueAt)}</span>
         <span>· ${fmtDate(last?last.at:null)}</span>
+        ${suggestion ? `<span style="color:var(--violet);font-weight:600;">→ ${escHtml(state.names[suggestion])}'s turn</span>` : ''}
       </div>
     </div>
     <div class="btn-col">
       <button class="done-btn" ${paused?'disabled':''} onclick="logRoot('${cfg.id}')">I did this</button>
+      <button class="mini-btn" ${paused?'disabled':''} onclick="logTogether('${cfg.id}')">🤝 Together</button>
       <button class="mini-btn" ${paused?'disabled':''} onclick="logSkip('${cfg.id}')">⏭ Skip</button>
       <button class="mini-btn" onclick="reminderForRoot('${cfg.id}')">📅 Remind</button>
       <button class="mini-btn" onclick="openBackdateModal('${cfg.id}', false)">📆 Set date</button>
@@ -878,6 +935,21 @@ function taskCardHTML(cfg){
 }
 
 function personalCardHTML(t){
+  if(t.oneOff){
+    const doneEntry = personalLastCompletion(t.id);
+    if(doneEntry) return '';
+    return `<div class="card personal">
+      <div class="stripe p"></div>
+      <div class="card-body">
+        <p class="task-name">${escHtml(t.name)} <span class="pts">+${t.points}</span></p>
+        <div class="task-meta"><span>One-off — not done yet</span></div>
+      </div>
+      <div class="btn-col">
+        <button class="done-btn teal" onclick="markPersonalDone('${t.id}')">Done</button>
+        <button class="mini-btn del" onclick="deletePersonalTask('${t.id}')">🗑 Remove</button>
+      </div>
+    </div>`;
+  }
   const last = personalLastCompletion(t.id);
   const baseTime = last ? last.at : (Date.now() - t.intervalDays*DAY);
   const dueAt = baseTime + t.intervalDays*DAY;
@@ -903,7 +975,7 @@ function personalCardHTML(t){
 
 function renderTasks(){
   const groups = [];
-  allTasks().forEach(t=>{
+  allTasks().filter(t => !(t.oneOff && lastCompletion(t.id))).forEach(t=>{
     let g = groups.find(g=>g.name===t.group);
     if(!g){ g={name:t.group, tasks:[]}; groups.push(g); }
     g.tasks.push(t);
@@ -935,7 +1007,7 @@ function renderHistory(){
     html += `<div class="card" style="display:block;padding:4px 14px;">`;
     state.history.slice(0,80).forEach(h=>{
       const cfg = findTaskCfg(h.taskId);
-      const label = h.skip ? `<span style="color:var(--muted);">Skipped</span>` : `<b>${escHtml(state.names[h.by])}</b>`;
+      const label = h.skip ? `<span style="color:var(--muted);">Skipped</span>` : (h.by==='both' ? `<b>Both of you</b>` : `<b>${escHtml(state.names[h.by])}</b>`);
       html += `<div class="history-item">
         <div class="history-dot ${h.skip ? 'skip' : h.by.toLowerCase()}"></div>
         <div class="history-text">${label} — ${cfg ? escHtml(cfg.name) : escHtml(h.taskId)}</div>
